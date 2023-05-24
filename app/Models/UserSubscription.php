@@ -14,6 +14,7 @@ class UserSubscription extends Model
         'subscription_id',
         'date_start',
         'date_end',
+        'articles',
     ];
     
     public function user(){

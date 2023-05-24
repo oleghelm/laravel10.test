@@ -18,10 +18,8 @@ class SubscriptionService {
                 ->whereDate('date_end', '>=', Carbon::today()->toDateString())->last();
         
         if($user_subscription){
-            $subscription = $user_subscription->subscription;
-            $subscription->articles_left = self::getUserArticlesCount($user, $user_subscription->date_start, $user_subscription->date_end);
-
-            return $subscription;
+            $user_subscription->articles_left = $user_subscription->articles - self::getUserArticlesCount($user, $user_subscription->date_start, $user_subscription->date_end);
+            return $user_subscription;
         }
         
         return false;
@@ -35,13 +33,17 @@ class SubscriptionService {
     }
     
     public static function createUserSubscription(User $user, Subscription $subscription){
-        /*
-         * Will we check user for active subscription in this moment and add new for dates when in will ends?
-         */
-        $user_subscription = new UserSubscription();
-        $user_subscription->user_id = $user->id;
+        //check if user has current subscription
+        $user_subscription = SubscriptionService::getUserSubscription($user);
+        if($user_subscription){
+            $user_subscription->articles += $subscription->publications;
+        } else {
+            $user_subscription = new UserSubscription();
+            $user_subscription->user_id = $user->id;
+            $user_subscription->date_start = Carbon::now()->format('Y-m-d H:i:s');
+            $user_subscription->articles = $subscription->publications;
+        }
         $user_subscription->subscription_id = $subscription->id;
-        $user_subscription->date_start = Carbon::now()->format('Y-m-d H:i:s');
         $user_subscription->date_end = Carbon::now()->addDays(SubscriptionService::SUBSCRIPTION_DAYS)->format('Y-m-d H:i:s');
         $user_subscription->save();
         return true;
