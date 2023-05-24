@@ -4,43 +4,46 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Article;
+use App\Models\User;
 use App\Services\SubscriptionService;
 
 class ArticlesController extends Controller
 {
     public function list(Request $req){
         $articles = Article::paginate(20);
-        
-        return view('articles/list', compact('articles'));
+        return response()->json(['articles' => $articles->toArray()]);
     }
     
     public function detail(Article $article){
-        
-        return view('articles/detail', compact('article'));
+        return response()->json(['article' => $article->toArray()]);
     }
     
     public function new(){
-        $user = Auth::user();
-        $subscription = SubscriptionService::getUserSubscription($user);
-        if($subscription && $subscription->articles_left > 0){
-            return view('articles/new');
+        $canAdd = SubscriptionService::canCurrentUserAddArticle();
+        if($canAdd === true){
+            $resp['success'] = true;
         } else {
-            abort(403);
+            $resp['error'] = $canAdd;
         }
+        return response()->json($resp);
     }
     
     public function save(Request $req){
         $user = Auth::user();
-        $subscription = SubscriptionService::getUserSubscription($user);
-        if($subscription && $subscription->articles_left > 0){
+        $canAdd = SubscriptionService::canCurrentUserAddArticle();
+        
+        if($canAdd === true){
             $article = new Article();
             $article->name = $req->name;
             $article->user_id = $user->id;
             $article->text = $req->text;
             $article->save();
-            return redirect(route('articles.list'));
+            
+            $resp['success'] = true;
         } else {
-            abort(403);
+            $resp['error'] = $canAdd;
         }
+                
+        return response()->json($resp);
     }
 }

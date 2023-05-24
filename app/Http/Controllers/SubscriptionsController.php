@@ -11,11 +11,11 @@ class SubscriptionsController extends Controller
 {
     public function list(Request $req){
         $subscriptions = Subscription::where('active',1)->paginate(20);
-        return view('subscriptions/list', compact('subscriptions'));
+        return response()->json(['subscriptions' => $subscriptions->toArray()]);
     }
     
     public function buyPage(Subscription $subscription){
-        return view('subscriptions/form', compact('subscription'));
+        return response()->json(['subscription' => $subscription->toArray()]);
     }
     
     public function processPay(Subscription $subscription, Request $req){
