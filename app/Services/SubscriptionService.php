@@ -12,19 +12,17 @@ class SubscriptionService {
     
     const SUBSCRIPTION_DAYS = 30;
     
-    public static function canCurrentUserAddArticle(){
-        $user = \Auth::user();
-        if($user){
-            $subscription = SubscriptionService::getUserSubscription($user);
-            if($subscription && $subscription->articles_left > 0){
-                $res = true;
-            } else {
-                $res['error'] = 'No subscriptions left.';
-            }
-        } else {
-            $res = 'Not authorized.';
+    private $errors = [];
+    
+    public static function buy(Subscription $subscription, $req){
+        $paymentService = new PaymentService();
+        if($paymentService->processPayment($req)){
+            $user = Auth::user();
+            SubscriptionService::createUserSubscription($user, $subscription);
+            return true;
         }
-        return $res;
+        $this->errors = $paymentService->getErrors();
+        return false;
     }
     
     public static function getUserSubscription(User $user){
@@ -35,7 +33,7 @@ class SubscriptionService {
                 ->first();
         
         if($user_subscription){
-            $user_subscription->articles_left = $user_subscription->articles - SubscriptionService::getUserArticlesCount($user, $user_subscription->date_start, $user_subscription->date_end);
+            $user_subscription->articles_left = $user_subscription->articles - self::getUserArticlesCount($user, $user_subscription->date_start, $user_subscription->date_end);
             return $user_subscription;
         }
         
@@ -54,15 +52,20 @@ class SubscriptionService {
         $user_subscription = SubscriptionService::getUserSubscription($user);
         if($user_subscription){
             $user_subscription->articles += $subscription->publications;
+            $user_subscription->date_end = Carbon::createFromFormat('Y-m-d H:i:s', $user_subscription->date_end)->addDays(SubscriptionService::SUBSCRIPTION_DAYS)->format('Y-m-d H:i:s');
         } else {
             $user_subscription = new UserSubscription();
             $user_subscription->user_id = $user->id;
             $user_subscription->date_start = Carbon::now()->format('Y-m-d H:i:s');
+            $user_subscription->date_end = Carbon::now()->addDays(SubscriptionService::SUBSCRIPTION_DAYS)->format('Y-m-d H:i:s');
             $user_subscription->articles = $subscription->publications;
         }
         $user_subscription->subscription_id = $subscription->id;
-        $user_subscription->date_end = Carbon::now()->addDays(SubscriptionService::SUBSCRIPTION_DAYS)->format('Y-m-d H:i:s');
         $user_subscription->save();
         return true;
+    }
+    
+    public function getErrors(){
+        return $this->errors;
     }
 }

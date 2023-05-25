@@ -18,18 +18,8 @@ class SubscriptionsController extends Controller
         return response()->json(['subscription' => $subscription->toArray()]);
     }
     
-    public function processPay(Subscription $subscription, Request $req){
-        $paymentService = new PaymentService();
-        $response = [];
-        if($paymentService->processPayment($req)){
-            $response['success'] = 1;
-            $user = Auth::user();
-            SubscriptionService::createUserSubscription($user, $subscription);
-        } else {
-            $response['success'] = 0;
-            $response['errors'] = $paymentService->getErrors();
-        }
-        
+    public function processPay(Subscription $subscription, Request $req, SubscriptionService $subscriptionService){
+        $response = $subscriptionService->buy($subscription, $req);
         return response()->json($response);
     }
 }
